@@ -2,9 +2,13 @@ import os
 import json
 from pathlib import Path
 
-from google import genai
-from google.genai import types
+from groq import Groq
 from dotenv import load_dotenv
+
+try:
+    from Backend.llm.groq_client import groq_chat_completion
+except ModuleNotFoundError:
+    from llm.groq_client import groq_chat_completion
 
 load_dotenv()
 
@@ -14,10 +18,10 @@ TRACES_DIR = BACKEND_DIR / "data" / "traces"
 OUTPUT_DIR = BACKEND_DIR / "data" / "classifications"
 PROMPT_FILE = BACKEND_DIR / "classifier" / "classifier_prompt.txt"
 
-MODEL_NAME = "gemini-3.6-flash"
+MODEL_NAME = os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b")
 
-client = genai.Client(
-    api_key=os.environ.get("GEMINI_API_KEY")
+client = Groq(
+    api_key=os.environ.get("GROQ_API_KEY")
 )
 
 
@@ -57,19 +61,18 @@ Return ONLY valid JSON.
 """
 
     # -----------------------------------------
-    # GEMINI API CALL
+    # GROQ API CALL
     # -----------------------------------------
-    response = client.models.generate_content(
+    response = groq_chat_completion(
+        client,
         model=MODEL_NAME,
-        contents=classifier_input,
-        config=types.GenerateContentConfig(
-            temperature=0
-        )
+        messages=[{"role": "user", "content": classifier_input}],
+        temperature=0
     )
 
-    result_text = response.text.strip()
+    result_text = (response.choices[0].message.content or "").strip()
 
-    # Remove markdown code fences if Gemini adds them
+    # Remove markdown code fences if the model adds them
     if result_text.startswith("```"):
         result_text = (
             result_text
@@ -124,8 +127,8 @@ def main():
             print(f"❌ {trace.stem} failed: {error}")
 
             # Stop immediately if quota is exhausted
-            if "429" in str(error) or "RESOURCE_EXHAUSTED" in str(error):
-                print("\n⚠️ Gemini quota exhausted.")
+            if "429" in str(error) or "rate_limit" in str(error).lower():
+                print("\n⚠️ Groq quota exhausted.")
                 print("Stopping classifier to avoid unnecessary API calls.\n")
                 break
 
