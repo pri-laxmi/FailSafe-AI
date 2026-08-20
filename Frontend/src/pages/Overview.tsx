@@ -8,7 +8,6 @@ import { ErrorState } from '../components/ErrorState'
 import { EmptyState } from '../components/EmptyState'
 import { CriticalFailureBanner } from '../components/CriticalFailureBanner'
 import { StaleScenariosBanner } from '../components/StaleScenariosBanner'
-import { GenerationProgress } from '../components/GenerationProgress'
 import { AgentOnboarding } from '../components/AgentOnboarding'
 import { getAgentConfig } from '../api/agent'
 import { getResults } from '../api/results'
@@ -16,7 +15,6 @@ import { getScenariosStatus } from '../api/scenarios'
 import { startRun } from '../api/runs'
 import { ApiError } from '../api/client'
 import { useApi } from '../lib/useApi'
-import { useScenarioGeneration } from '../lib/useScenarioGeneration'
 import { computeResultStats } from '../lib/aggregate'
 
 export function Overview() {
@@ -27,11 +25,6 @@ export function Overview() {
   const [changingAgent, setChangingAgent] = useState(false)
   const [starting, setStarting] = useState(false)
   const [startError, setStartError] = useState<string | null>(null)
-
-  const generation = useScenarioGeneration(() => {
-    resultsState.reload()
-    statusState.reload()
-  })
 
   const handleStartRun = async () => {
     setStarting(true)
@@ -118,12 +111,8 @@ export function Overview() {
           />
         </div>
 
-        {generation.job && (generation.isRunning || generation.job.status === 'failed') && (
-          <GenerationProgress job={generation.job} />
-        )}
-
         {statusState.status === 'success' && (
-          <StaleScenariosBanner status={statusState.data} onRegenerate={generation.start} regenerating={generation.isRunning} />
+          <StaleScenariosBanner status={statusState.data} linkTo="/scenarios" />
         )}
 
         <CriticalFailureBanner count={stats.criticalFailures} totalFailures={stats.failed} />

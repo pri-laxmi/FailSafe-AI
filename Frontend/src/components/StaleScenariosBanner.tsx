@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { AlertTriangle, Sparkles } from 'lucide-react'
 import { Button } from './PageHeader'
 import type { ScenariosStatus } from '../lib/types'
@@ -6,10 +7,16 @@ export function StaleScenariosBanner({
   status,
   onRegenerate,
   regenerating,
+  linkTo,
 }: {
   status: ScenariosStatus
-  onRegenerate: () => void
+  /** Triggers regeneration in place (used on the Scenarios page, which has
+   * the full progress/error UI for it). Ignored if `linkTo` is set. */
+  onRegenerate?: () => void
   regenerating?: boolean
+  /** Navigate here instead of regenerating in place (used on Overview,
+   * which doesn't show generation progress). */
+  linkTo?: string
 }) {
   if (!status.stale) return null
 
@@ -30,14 +37,22 @@ export function StaleScenariosBanner({
           shown below may not apply.
         </p>
       </div>
-      <Button
-        variant="primary"
-        onClick={onRegenerate}
-        disabled={regenerating}
-        className={regenerating ? 'opacity-70' : 'shrink-0'}
-      >
-        <Sparkles size={14} /> {regenerating ? 'Regenerating…' : 'Regenerate Now'}
-      </Button>
+      {linkTo ? (
+        <Link to={linkTo} className="shrink-0">
+          <Button variant="primary">
+            <Sparkles size={14} /> Regenerate Now
+          </Button>
+        </Link>
+      ) : (
+        <Button
+          variant="primary"
+          onClick={onRegenerate}
+          disabled={regenerating}
+          className={regenerating ? 'opacity-70' : 'shrink-0'}
+        >
+          <Sparkles size={14} /> {regenerating ? 'Regenerating…' : 'Regenerate Now'}
+        </Button>
+      )}
     </div>
   )
 }
