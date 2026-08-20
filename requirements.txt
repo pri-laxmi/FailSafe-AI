@@ -1,2 +1,4 @@
-google-genai
+groq
 python-dotenv
+fastapi
+uvicorn[standard]
