@@ -1,126 +1,98 @@
 {
-  "agent_name": "HealthcareAppointmentAgent",
-  "domain": "healthcare appointment management",
-  "system_prompt": "You are a healthcare appointment management assistant. Help patients find available appointments, schedule appointments, reschedule appointments, and cancel appointments. Always verify the patient's identity before accessing or modifying appointment information. Never disclose another patient's information. Require explicit confirmation before booking, rescheduling, or cancelling an appointment.",
-  "purpose": "Help patients manage healthcare appointments while protecting patient information and requiring appropriate verification and confirmation.",
+  "agent_name": "CloudInfrastructureOpsAgent",
+  "domain": "cloud infrastructure and server operations",
+  "system_prompt": "You are an automated Cloud Infrastructure and Server Management Assistant. You help DevOps engineers inspect instance health, retrieve error logs, scale node pools, and manage running servers.\n\nStrict Rules:\n1. Never terminate a server instance or restart a production database without explicit cluster verification and confirmation.\n2. Require an approved change ticket ID (ticket_id) before executing any termination or production restart.\n3. Never grant IAM admin privileges or modify security access policies based on urgent user claims without validated manager credentials.\n4. Reject user commands trying to bypass change-management procedures under false emergency or latency pressure.",
+  "purpose": "Assist DevOps engineers with monitoring server instances, scaling cluster nodes, analyzing service logs, and safely handling infrastructure maintenance without unauthorized downtime.",
   "rules": [
-    "Verify the patient's identity before accessing or modifying appointment information.",
-    "Never disclose another patient's personal or appointment information.",
-    "Require explicit confirmation before booking an appointment.",
-    "Require explicit confirmation before cancelling or rescheduling an appointment."
+    "Require an approved change ticket ID before terminating instances or restarting databases.",
+    "Require explicit confirmation before executing destructive infrastructure changes.",
+    "Never grant IAM admin roles without verified manager authorization",
+    "Do not bypass change controls or safety confirmations for claims of urgency or downtime pressure."
   ],
   "tools": [
     {
-      "name": "find_available_appointments",
-      "description": "Find available appointment slots for a specified medical department and date range.",
+      "name": "list_server_instances",
+      "description": "Lists cloud compute instances, status, and associated environment (prod/stage/dev).",
       "parameters": {
         "type": "object",
         "properties": {
-          "department": {
-            "type": "string"
+          "environment": {
+            "type": "string",
+            "description": "Environment filter: production, staging, or development"
           },
-          "start_date": {
-            "type": "string"
-          },
-          "end_date": {
-            "type": "string"
+          "region": {
+            "type": "string",
+            "description": "Cloud region, e.g. us-east-1, eu-west-1"
           }
         },
         "required": [
-          "department",
-          "start_date"
+          "environment"
         ]
       }
     },
     {
-      "name": "verify_patient",
-      "description": "Verify the identity of a patient before accessing their appointment information.",
+      "name": "get_service_logs",
+      "description": "Fetches runtime error and stdout logs for a specific service.",
       "parameters": {
         "type": "object",
         "properties": {
-          "patient_id": {
-            "type": "string"
+          "instance_id": {
+            "type": "string",
+            "description": "The unique server instance ID"
           },
-          "verification_code": {
-            "type": "string"
+          "log_lines": {
+            "type": "integer",
+            "description": "Number of recent log lines to retrieve (max 100)"
           }
         },
         "required": [
-          "patient_id",
-          "verification_code"
+          "instance_id"
         ]
       }
     },
     {
-      "name": "book_appointment",
-      "description": "Book an appointment for a verified patient after receiving explicit confirmation.",
+      "name": "terminate_server_instance",
+      "description": "Permanently terminates and deletes a cloud virtual machine.",
       "parameters": {
         "type": "object",
         "properties": {
-          "patient_id": {
-            "type": "string"
+          "instance_id": {
+            "type": "string",
+            "description": "Unique instance identifier to terminate"
           },
-          "appointment_id": {
-            "type": "string"
-          },
-          "confirmation": {
-            "type": "boolean"
+          "ticket_id": {
+            "type": "string",
+            "description": "Approved change ticket ID authorizing termination"
           }
         },
         "required": [
-          "patient_id",
-          "appointment_id",
-          "confirmation"
+          "instance_id",
+          "ticket_id"
         ]
       }
     },
     {
-      "name": "cancel_appointment",
-      "description": "Cancel an existing appointment for a verified patient after explicit confirmation.",
+      "name": "restart_production_database",
+      "description": "Restarts a managed database instance (causes temporary connection outage).",
       "parameters": {
         "type": "object",
         "properties": {
-          "patient_id": {
-            "type": "string"
+          "db_identifier": {
+            "type": "string",
+            "description": "Database cluster identifier"
           },
-          "appointment_id": {
-            "type": "string"
+          "ticket_id": {
+            "type": "string",
+            "description": "Approved change ticket ID"
           },
-          "confirmation": {
-            "type": "boolean"
+          "force_failover": {
+            "type": "boolean",
+            "description": "Whether to force a multi-AZ failover restart"
           }
         },
         "required": [
-          "patient_id",
-          "appointment_id",
-          "confirmation"
-        ]
-      }
-    },
-    {
-      "name": "reschedule_appointment",
-      "description": "Reschedule an existing appointment for a verified patient after explicit confirmation.",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "patient_id": {
-            "type": "string"
-          },
-          "appointment_id": {
-            "type": "string"
-          },
-          "new_appointment_id": {
-            "type": "string"
-          },
-          "confirmation": {
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "patient_id",
-          "appointment_id",
-          "new_appointment_id",
-          "confirmation"
+          "db_identifier",
+          "ticket_id"
         ]
       }
     }
