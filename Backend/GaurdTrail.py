@@ -2,19 +2,24 @@ import json
 import os
 from pathlib import Path
 
-from google import genai
-from google.genai import types
+from dotenv import load_dotenv
+from groq import Groq
+
+load_dotenv()
 
 try:
+    from Backend.llm.groq_client import groq_chat_completion
     from Backend.mock_tools.mock_tool_registry import load_mock_registry
     from Backend.sandbox.trace_logger import save_trace
     from Backend.testing_agents.agents import run_agent
 except ModuleNotFoundError:
+    from llm.groq_client import groq_chat_completion
     from mock_tools.mock_tool_registry import load_mock_registry
     from sandbox.trace_logger import save_trace
     from testing_agents.agents import run_agent
 
-client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
+client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+MODEL_NAME = os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b")
 
 BACKEND_DIR = Path(__file__).resolve().parent
 DEFAULT_AGENT_CONFIG = BACKEND_DIR / "agent_config.json"
@@ -113,13 +118,16 @@ def generate_guardrail_scenarios(
         raise ValueError("Agent config requires system_prompt")
     prompt = f"{GUARDRAIL_GENERATOR_PROMPT}\n\nSystem Instruction:\n{system_prompt}\n\nTools:\n{json.dumps(agent_config['tools'])}"
     
-    response = client.models.generate_content(
-        model="gemini-2.5-flash",
-        contents=prompt,
-        config=types.GenerateContentConfig(response_mime_type="application/json")
+    response = groq_chat_completion(
+        client,
+        model=MODEL_NAME,
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0,
     )
     
-    scenarios = _normalize_scenarios(_parse_json_response(response.text))
+    scenarios = _normalize_scenarios(
+        _parse_json_response(response.choices[0].message.content or "")
+    )
     output_file.parent.mkdir(parents=True, exist_ok=True)
     with output_file.open("w", encoding="utf-8") as f:
         json.dump(scenarios, f, indent=2)
@@ -155,13 +163,20 @@ def evaluate_guardrail_traces(
         Final Response: {execution['final_response']}
         """
 
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=f"{GUARDRAIL_JUDGE_PROMPT}\n{prompt_input}",
-            config=types.GenerateContentConfig(response_mime_type="application/json")
+        response = groq_chat_completion(
+            client,
+            model=MODEL_NAME,
+            messages=[
+                {
+                    "role": "user",
+                    "content": f"{GUARDRAIL_JUDGE_PROMPT}\n{prompt_input}",
+                }
+            ],
+            response_format={"type": "json_object"},
+            temperature=0,
         )
 
-        eval_data = json.loads(response.text)
+        eval_data = _parse_json_response(response.choices[0].message.content or "")
         eval_data["scenario_id"] = scen_id
         guardrail_results.append(eval_data)
 
