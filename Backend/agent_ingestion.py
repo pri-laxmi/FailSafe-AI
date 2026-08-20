@@ -7,6 +7,11 @@ import os
 from pathlib import Path
 from typing import Any
 
+try:
+    from Backend.llm.groq_client import groq_chat_completion
+except ModuleNotFoundError:
+    from llm.groq_client import groq_chat_completion
+
 
 DEFAULT_CONFIG_PATH = Path(__file__).with_name("agent_config.json")
 
@@ -118,35 +123,40 @@ def config_from_plain_english(description: str) -> dict[str, Any]:
     if not description.strip():
         raise AgentConfigError("The plain-English agent description is empty")
 
-    api_key = os.getenv("GEMINI_API_KEY")
+    api_key = os.getenv("GROQ_API_KEY")
     if not api_key:
         raise AgentConfigError(
-            "GEMINI_API_KEY is required for plain-English ingestion"
+            "GROQ_API_KEY is required for plain-English ingestion"
         )
 
     try:
-        google_genai = importlib.import_module("google.genai")
-        client = google_genai.Client(api_key=api_key)
-        response = client.models.generate_content(
-            model=os.getenv("GEMINI_MODEL", "gemini-2.5-flash"),
-            contents=(
-                "Convert the user's agent description into one JSON object. "
-                "Return only JSON, with no markdown. Do not invent tools or "
-                "safety rules that are not implied.\n\n"
-                "Required JSON fields: agent_name, domain, system_prompt, "
-                "purpose, rules (array of strings), and tools (array). Each "
-                "tool must contain name, description, and parameters as a JSON "
-                f"object.\n\nAgent description:\n{description}"
-            ),
-            config=google_genai.types.GenerateContentConfig(
-                response_mime_type="application/json",
-                temperature=0,
-            ),
+        groq_module = importlib.import_module("groq")
+        client = groq_module.Groq(api_key=api_key)
+        response = groq_chat_completion(
+            client,
+            model=os.getenv("GROQ_MODEL", "openai/gpt-oss-120b"),
+            messages=[
+                {
+                    "role": "user",
+                    "content": (
+                        "Convert the user's agent description into one JSON object. "
+                        "Return only JSON, with no markdown. Do not invent tools or "
+                        "safety rules that are not implied.\n\n"
+                        "Required JSON fields: agent_name, domain, system_prompt, "
+                        "purpose, rules (array of strings), and tools (array). Each "
+                        "tool must contain name, description, and parameters as a JSON "
+                        f"object.\n\nAgent description:\n{description}"
+                    ),
+                }
+            ],
+            response_format={"type": "json_object"},
+            temperature=0,
         )
+        response_text = response.choices[0].message.content or ""
     except Exception as error:
         raise AgentConfigError(f"Plain-English conversion failed: {error}") from error
 
-    return validate_agent_config(_extract_json_object(response.text))
+    return validate_agent_config(_extract_json_object(response_text))
 
 
 def _parse_tools(value: str) -> list[dict[str, Any]]:

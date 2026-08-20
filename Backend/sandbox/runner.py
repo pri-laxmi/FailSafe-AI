@@ -76,7 +76,7 @@ def main():
         existing_trace = TRACES_DIR / f"{scenario_id}.json"
 
         # IMPORTANT:
-        # If trace already exists, don't call Gemini again.
+        # If trace already exists, don't call the LLM again.
         if existing_trace.exists():
             print(f"⏭️ {scenario_id} already completed — skipping API call")
             skipped += 1
