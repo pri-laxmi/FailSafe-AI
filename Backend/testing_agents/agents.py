@@ -1,8 +1,14 @@
 import json
 import os
 from pathlib import Path
+from pyexpat.errors import messages
+from dotenv import load_dotenv
+
+
 
 from groq import Groq
+
+load_dotenv()
 
 try:
     from Backend.agent_ingestion import load_agent_config
@@ -228,7 +234,13 @@ def load_registered_aut() -> None:
 # ==========================================
 # GENERIC AGENT RUNNER LOOP
 # ==========================================
-def run_agent(agent_type: str, user_prompt: str, mock_tool_executor, max_turns: int = 5) -> dict:
+def run_agent(
+    agent_type: str,
+    user_prompt: str,
+    mock_tool_executor,
+    max_turns: int = 5,
+    conversation_history: list[dict] | None = None,
+) -> dict:
     """
     Executes a multi-turn tool calling loop for the chosen agent.
 
@@ -245,9 +257,21 @@ def run_agent(agent_type: str, user_prompt: str, mock_tool_executor, max_turns: 
 
     config = AGENT_REGISTRY[agent_type]
     messages = [
-        {"role": "system", "content": config["system_instruction"]},
-        {"role": "user", "content": user_prompt},
-    ]
+    {
+        "role": "system",
+        "content": config["system_instruction"],
+    }
+]
+
+    if conversation_history:
+        messages.extend(conversation_history)
+
+    messages.append(
+    {
+        "role": "user",
+        "content": user_prompt,
+    }
+)
 
     trace_events = []
 

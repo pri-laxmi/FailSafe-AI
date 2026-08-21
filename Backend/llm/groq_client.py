@@ -28,7 +28,7 @@ import re
 import threading
 import time
 from typing import Any
-
+from typing import Optional
 try:
     from groq import RateLimitError
 except ImportError:  # pragma: no cover - groq is a hard dependency at call time
@@ -61,8 +61,7 @@ def _is_rate_limit_error(error: Exception) -> bool:
     text = str(error)
     return "429" in text or "rate_limit_exceeded" in text.lower()
 
-
-def _extract_retry_after_seconds(error: Exception) -> float | None:
+def _extract_retry_after_seconds(error: Exception) -> Optional[float]:
     """Best-effort, provider-format-agnostic extraction of how long to wait,
     preferring the server's own guidance over guessing."""
     response = getattr(error, "response", None)
